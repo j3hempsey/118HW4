@@ -2,3 +2,61 @@
 
 2. L1 size: 32KB line size: 512B
 L2 size: 2MB line size: 4KB
+
+TODO FLOPS
+3. 16.87 seconds is the shortest time the naive calculation ran in.
+
+4.
+With a block size of two elements:
+./mm 2048 2048 2048
+N: 2048 K: 2048 M: 2048
+Timer: gettimeofday
+Timer resolution: ~ 1 us (?)
+Naive matrix multiply
+Done
+time for naive implementation: 572.956 seconds
+
+Cache-blocked matrix multiply
+Done
+time for cache-blocked implementation: 148.669 seconds
+SUCCESS
+
+5.
+For block size adjustment I ran the program with ./mm 1024 1024 1024
+block = 2x2 elements:
+  time for naive implementation: 58.3283 seconds
+  time for cache-blocked implementation: 17.0025 seconds
+
+block = 4x4 elements:
+  time for naive implementation: 40.431 seconds
+  time for cache-blocked implementation: 5.58068 seconds
+
+block = 8x8 elements:
+  time for naive implementation: 52.552 seconds
+  time for cache-blocked implementation: 2.18637 seconds
+
+block = 16x16 elements:
+  time for naive implementation: 74.7981 seconds
+  time for cache-blocked implementation: 2.38854 seconds
+
+block = 32x32 elements:
+  time for naive implementation: 62.6128 seconds
+  time for cache-blocked implementation: 1.77091 seconds
+
+block = 64x64 elements:
+  time for naive implementation: 19.8348 seconds
+  time for cache-blocked implementation: 1.43144 seconds
+
+block = 128x128 elements:
+  time for naive implementation: 17.2065 seconds
+  time for cache-blocked implementation: 3.12861 seconds
+
+Our optimal block size appears to be 64x64 elements
+
+Our dtype in this case is a double which is 8 bytes
+This means each block takes up 64*64*8 bytes of cache. This comes out to 32KB per block.
+We are attempting to keep 3 block in cache meaning we need 96KB of cache.
+
+Increasing the block size to 128x128, we see an increase in calculation time. This
+does not mean our block is completely leaving cache but we may be entering lower and
+slower levels of cache. We would guess that the cache size for is 96KB
