@@ -60,11 +60,12 @@ void mm_cb (dtype *C, dtype *A, dtype *B, int N, int K, int M)
   /* =======================================================+ */
   /* Implement your own cache-blocked matrix-matrix multiply  */
   /* =======================================================+ */
-  int _BLOCKSIZE_ = 2;
+  int _BLOCKSIZE_ = 64;       //SQRT of block size
+  
   int i, j, k;
-  int N_blocks = N / _BLOCKSIZE_;
-  int M_blocks = M / _BLOCKSIZE_;
-  int K_blocks = K / _BLOCKSIZE_;
+  int N_blocks = (int) N / _BLOCKSIZE_;
+  int M_blocks = (int) M / _BLOCKSIZE_;
+  int K_blocks = (int) K / _BLOCKSIZE_;
 
   dtype *A_block = (dtype*) malloc (_BLOCKSIZE_ * _BLOCKSIZE_ * sizeof (dtype));
   dtype *B_block = (dtype*) malloc (_BLOCKSIZE_ * _BLOCKSIZE_ * sizeof (dtype));
@@ -97,7 +98,6 @@ void mm_cb (dtype *C, dtype *A, dtype *B, int N, int K, int M)
       }
     }
   }
-
 }
 
 void mm_sv (dtype *C, dtype *A, dtype *B, int N, int K, int M)
