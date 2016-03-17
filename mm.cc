@@ -2,7 +2,7 @@
 #include <stdlib.h>
 #include <time.h>
 #include <assert.h>
-
+#include <pmmintrin.h> // for SSE3
 #include "timer.c"
 
 #define N_ 4096
