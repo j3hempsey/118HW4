@@ -62,6 +62,7 @@ void mm_cb (dtype *C, dtype *A, dtype *B, int N, int K, int M)
   /* =======================================================+ */
   int _BLOCKSIZE_ = 64;       //SQRT of block size
 
+  if (N < _BLOCKSIZE_ || M < _BLOCKSIZE_ || K < _BLOCKSIZE_) _BLOCKSIZE_ = 1;
   int i, j, k;
   int N_blocks = (int) N / _BLOCKSIZE_;
   int M_blocks = (int) M / _BLOCKSIZE_;
