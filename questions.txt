@@ -1,0 +1,4 @@
+1. 2 levels of cache
+
+2. L1 size: 32KB line size: 512B
+L2 size: 2MB line size: 4KB
