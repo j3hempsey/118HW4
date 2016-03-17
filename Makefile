@@ -2,7 +2,7 @@
 
 CC = g++
 CFLAGS =
-OPTFLAGS = -O3
+OPTFLAGS = -O3 -march=native
 
 TARGETS = sb mm
 all: $(TARGETS)
