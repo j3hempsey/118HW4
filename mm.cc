@@ -55,12 +55,46 @@ void block_multiply(dtype *C, dtype *A, dtype *B,
   }
 }
 
+void SIMD_multiply(dtype *C, dtype *A, dtype *B, int blocksize) {
+	// C++ vectors are stored in row-major order, so need to transpose second matrix for SIMD
+	// using K, M values based on homework image
+	dtype *Btemparray = (dtype*) malloc (blocksize * blocksize * sizeof (dtype));
+	for (int i = 0; i < blocksize; i++) {
+		for (int j = i; j < blocksize; j++) {
+			Btemparray[i * blocksize + j] = B[j * blocksize + i];
+			Btemparray[j * blocksize + i] = B[i * blocksize + j];
+		}
+	}
+
+	// 3 128 bit registers used for multiplication and summation
+	for (int i = 0; i < blocksize; i++) {
+        for (int j = 0; j < blocksize; j++) {
+		__m128d Z = _mm_setzero_pd();
+          for(int k = 0; k < blocksize; k += 2) {
+					__m128d X, Y;
+    				// load 2 numbers in each register
+    				X = _mm_load_pd(&A[i * blocksize + k]);
+    				Y = _mm_load_pd(&Btemparray[j * blocksize + k]);
+    				// multiply the numbers and add together
+    				X = _mm_mul_pd(X, Y);
+    				Z = _mm_add_pd(X, Z);
+  			}
+		// sum all values in Z
+		Z = _mm_hadd_pd(Z, Z);
+		// store in C array
+		_mm_store_sd(&C[i * blocksize + j], Z);
+		}
+	}
+
+	free(Btemparray);
+}
+
 void mm_cb (dtype *C, dtype *A, dtype *B, int N, int K, int M)
 {
   /* =======================================================+ */
   /* Implement your own cache-blocked matrix-matrix multiply  */
   /* =======================================================+ */
-  int _BLOCKSIZE_ = 64;       //SQRT of block size
+    int _BLOCKSIZE_ = 64;       //SQRT of block size
 
   if (N < _BLOCKSIZE_ || M < _BLOCKSIZE_ || K < _BLOCKSIZE_) _BLOCKSIZE_ = 1;
   int i, j, k;
@@ -107,37 +141,45 @@ void mm_sv (dtype *C, dtype *A, dtype *B, int N, int K, int M)
 	/* =======================================================+ */
 	/* Implement your own SIMD-vectorized matrix-matrix multiply  */
 	/* =======================================================+ */
-	// C++ vectors are stored in row-major order, so need to transpose second matrix for SIMD
-	// using K, M values based on homework image
-	dtype *Btemparray = (dtype*) malloc (K * M * sizeof (dtype));
-	for (int i = 0; i < K; i++) {
-		for (int j = i; j < M; j++) {
-			Btemparray[i * K + j] = B[j * M + i];
-			Btemparray[j * M + i] = B[i * K + j];
+	int _BLOCKSIZE_ = 64;       //SQRT of block size
+
+	if (N < _BLOCKSIZE_ || M < _BLOCKSIZE_ || K < _BLOCKSIZE_) _BLOCKSIZE_ = 1;
+	int i, j, k;
+	int N_blocks = (int) N / _BLOCKSIZE_;
+	int M_blocks = (int) M / _BLOCKSIZE_;
+	int K_blocks = (int) K / _BLOCKSIZE_;
+
+	dtype *A_block = (dtype*) malloc (_BLOCKSIZE_ * _BLOCKSIZE_ * sizeof (dtype));
+	dtype *B_block = (dtype*) malloc (_BLOCKSIZE_ * _BLOCKSIZE_ * sizeof (dtype));
+	dtype *C_block = (dtype*) malloc (_BLOCKSIZE_ * _BLOCKSIZE_ * sizeof (dtype));
+
+	for(int i = 0; i < N_blocks; i++) {
+		for(int j = 0; j < M_blocks; j++) {
+		  //READ C(i,j)
+		  for (int read_i = 0; read_i < _BLOCKSIZE_; ++read_i) {
+			for (int read_j = 0; read_j < _BLOCKSIZE_; ++read_j) {
+			  C_block[read_i * _BLOCKSIZE_ + read_j] = C[(i * _BLOCKSIZE_ + read_i) * M  + (j * _BLOCKSIZE_ + read_j)];
+			}
+		  }
+
+		  for(int k = 0; k < K_blocks; k++) {
+			//Read A,B
+			for (int read_i = 0; read_i < _BLOCKSIZE_; ++read_i) {
+			  for (int read_j = 0; read_j < _BLOCKSIZE_; ++read_j) {
+				A_block[read_i * _BLOCKSIZE_ + read_j] = A[(i * _BLOCKSIZE_ + read_i) * K  + (k * _BLOCKSIZE_ + read_j)];
+				B_block[read_i * _BLOCKSIZE_ + read_j] = B[(k * _BLOCKSIZE_ + read_i) * M  + (j * _BLOCKSIZE_ + read_j)];
+			  }
+			}
+			block_multiply(C_block, A_block, B_block,_BLOCKSIZE_);
+		  }
+		  //Write C block back
+		  for (int read_i = 0; read_i < _BLOCKSIZE_; ++read_i) {
+			for (int read_j = 0; read_j < _BLOCKSIZE_; ++read_j) {
+			  C[(i * _BLOCKSIZE_ + read_i) * M  + (j * _BLOCKSIZE_ + read_j)] = C_block[read_i * _BLOCKSIZE_ + read_j];
+			}
+		  }
 		}
 	}
-
-	// 3 128 bit registers used for multiplication and summation
-	for (int i = 0; i < M; i++) {
-        for (int j = 0; j < N; j++) {
-		__m128d Z = _mm_setzero_pd();
-          for(int k = 0; k < K; k += 2) {
-					__m128d X, Y;
-    				// load 2 numbers in each register
-    				X = _mm_load_pd(&A[i * K + k]);
-    				Y = _mm_load_pd(&Btemparray[j * K + k]);
-    				// multiply the numbers and add together
-    				X = _mm_mul_pd(X, Y);
-    				Z = _mm_add_pd(X, Z);
-  			}
-		// sum all values in Z
-		Z = _mm_hadd_pd(Z, Z);
-		// store in C array
-		_mm_store_sd(&C[i * N + j], Z);
-		}
-	}
-
-	free(Btemparray);
 }
 
 int main(int argc, char** argv)
