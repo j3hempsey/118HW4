@@ -34,10 +34,6 @@ void verify(dtype *C, dtype *C_ans, int N, int M)
 
 void mm_serial (dtype *C, dtype *A, dtype *B, int N, int K, int M)
 {
-  printf("A:\n");
-  print_mat(A, N, K);
-  printf("B:\n");
-  print_mat(B, K, M);
   int i, j, k;
   for(int i = 0; i < N; i++) {
     for(int j = 0; j < M; j++) {
@@ -46,19 +42,14 @@ void mm_serial (dtype *C, dtype *A, dtype *B, int N, int K, int M)
       }
     }
   }
-  printf("C:\n");
-  print_mat(C, N, M);
 }
 void block_multiply(dtype *C, dtype *A, dtype *B,
-  int blocksize ,int in_i, int in_j, int in_k, int N, int K, int M)
+  int blocksize)
 {
-  int i = in_i * blocksize;
-  int j = in_j * blocksize;
-  int k = in_k * blocksize;
-  for(i; i < in_i + blocksize; ++i){
-    for(j; j < in_j + blocksize; ++j){
-      for(k; k < in_k + blocksize; ++k){
-        C[i * M + j] += A[i * K + k] * B[k * M + j];
+  for(int i = 0; i < blocksize; ++i){
+    for(int j = 0; j < blocksize; ++j){
+      for(int k = 0; k < blocksize; ++k){
+        C[i * blocksize + j] += A[i * blocksize + k] * B[k * blocksize + j];
       }
     }
   }
@@ -74,21 +65,39 @@ void mm_cb (dtype *C, dtype *A, dtype *B, int N, int K, int M)
   int N_blocks = N / _BLOCKSIZE_;
   int M_blocks = M / _BLOCKSIZE_;
   int K_blocks = K / _BLOCKSIZE_;
-  printf("A:\n");
-  print_mat(A, N, K);
-  printf("B:\n");
-  print_mat(B, K, M);
+
+  dtype *A_block = (dtype*) malloc (_BLOCKSIZE_ * _BLOCKSIZE_ * sizeof (dtype));
+  dtype *B_block = (dtype*) malloc (_BLOCKSIZE_ * _BLOCKSIZE_ * sizeof (dtype));
+  dtype *C_block = (dtype*) malloc (_BLOCKSIZE_ * _BLOCKSIZE_ * sizeof (dtype));
+
   for(int i = 0; i < N_blocks; i++) {
     for(int j = 0; j < M_blocks; j++) {
       //READ C(i,j)
+      for (int read_i = 0; read_i < _BLOCKSIZE_; ++read_i) {
+        for (int read_j = 0; read_j < _BLOCKSIZE_; ++read_j) {
+          C_block[read_i * _BLOCKSIZE_ + read_j] = C[(i * _BLOCKSIZE_ + read_i) * M  + (j * _BLOCKSIZE_ + read_j)];
+        }
+      }
+
       for(int k = 0; k < K_blocks; k++) {
-        //READ A(i,k) B(k,j)
-        block_multiply(C, A, B,_BLOCKSIZE_, i, j, k, N, K, M);
+        //Read A,B
+        for (int read_i = 0; read_i < _BLOCKSIZE_; ++read_i) {
+          for (int read_j = 0; read_j < _BLOCKSIZE_; ++read_j) {
+            A_block[read_i * _BLOCKSIZE_ + read_j] = A[(i * _BLOCKSIZE_ + read_i) * K  + (k * _BLOCKSIZE_ + read_j)];
+            B_block[read_i * _BLOCKSIZE_ + read_j] = B[(k * _BLOCKSIZE_ + read_i) * M  + (j * _BLOCKSIZE_ + read_j)];
+          }
+        }
+        block_multiply(C_block, A_block, B_block,_BLOCKSIZE_);
+      }
+      //Write C block back
+      for (int read_i = 0; read_i < _BLOCKSIZE_; ++read_i) {
+        for (int read_j = 0; read_j < _BLOCKSIZE_; ++read_j) {
+          C[(i * _BLOCKSIZE_ + read_i) * M  + (j * _BLOCKSIZE_ + read_j)] = C_block[read_i * _BLOCKSIZE_ + read_j];
+        }
       }
     }
   }
-  printf("C:\n");
-  print_mat(C, N, M);
+
 }
 
 void mm_sv (dtype *C, dtype *A, dtype *B, int N, int K, int M)
