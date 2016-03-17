@@ -11,6 +11,17 @@
 
 typedef double dtype;
 
+void print_mat(dtype *A, int N, int M)
+{
+  for (int i = 0; i < N; ++i)
+  {
+    for (int j = 0; j < M; ++j){
+      printf("%lf, ", A[i * M  + j]);
+    }
+    printf("\n");
+  }
+}
+
 void verify(dtype *C, dtype *C_ans, int N, int M)
 {
   int i, cnt;
@@ -23,10 +34,30 @@ void verify(dtype *C, dtype *C_ans, int N, int M)
 
 void mm_serial (dtype *C, dtype *A, dtype *B, int N, int K, int M)
 {
+  printf("A:\n");
+  print_mat(A, N, K);
+  printf("B:\n");
+  print_mat(B, K, M);
   int i, j, k;
   for(int i = 0; i < N; i++) {
     for(int j = 0; j < M; j++) {
       for(int k = 0; k < K; k++) {
+        C[i * M + j] += A[i * K + k] * B[k * M + j];
+      }
+    }
+  }
+  printf("C:\n");
+  print_mat(C, N, M);
+}
+void block_multiply(dtype *C, dtype *A, dtype *B,
+  int blocksize ,int in_i, int in_j, int in_k, int N, int K, int M)
+{
+  int i = in_i * blocksize;
+  int j = in_j * blocksize;
+  int k = in_k * blocksize;
+  for(i; i < in_i + blocksize; ++i){
+    for(j; j < in_j + blocksize; ++j){
+      for(k; k < in_k + blocksize; ++k){
         C[i * M + j] += A[i * K + k] * B[k * M + j];
       }
     }
@@ -38,6 +69,26 @@ void mm_cb (dtype *C, dtype *A, dtype *B, int N, int K, int M)
   /* =======================================================+ */
   /* Implement your own cache-blocked matrix-matrix multiply  */
   /* =======================================================+ */
+  int _BLOCKSIZE_ = 2;
+  int i, j, k;
+  int N_blocks = N / _BLOCKSIZE_;
+  int M_blocks = M / _BLOCKSIZE_;
+  int K_blocks = K / _BLOCKSIZE_;
+  printf("A:\n");
+  print_mat(A, N, K);
+  printf("B:\n");
+  print_mat(B, K, M);
+  for(int i = 0; i < N_blocks; i++) {
+    for(int j = 0; j < M_blocks; j++) {
+      //READ C(i,j)
+      for(int k = 0; k < K_blocks; k++) {
+        //READ A(i,k) B(k,j)
+        block_multiply(C, A, B,_BLOCKSIZE_, i, j, k, N, K, M);
+      }
+    }
+  }
+  printf("C:\n");
+  print_mat(C, N, M);
 }
 
 void mm_sv (dtype *C, dtype *A, dtype *B, int N, int K, int M)
@@ -53,15 +104,15 @@ int main(int argc, char** argv)
   int N, K, M;
 
   if(argc == 4) {
-    N = atoi (argv[1]);		
-    K = atoi (argv[2]);		
-    M = atoi (argv[3]);		
+    N = atoi (argv[1]);
+    K = atoi (argv[2]);
+    M = atoi (argv[3]);
     printf("N: %d K: %d M: %d\n", N, K, M);
   } else {
     N = N_;
     K = K_;
     M = M_;
-    printf("N: %d K: %d M: %d\n", N, K, M);	
+    printf("N: %d K: %d M: %d\n", N, K, M);
   }
 
   dtype *A = (dtype*) malloc (N * K * sizeof (dtype));
