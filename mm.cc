@@ -100,11 +100,48 @@ void mm_cb (dtype *C, dtype *A, dtype *B, int N, int K, int M)
   }
 }
 
+// gcc -O3 -march=native mm.cc -o mm
 void mm_sv (dtype *C, dtype *A, dtype *B, int N, int K, int M)
 {
-  /* =======================================================+ */
-  /* Implement your own SIMD-vectorized matrix-matrix multiply  */
-  /* =======================================================+ */
+	/* =======================================================+ */
+	/* Implement your own SIMD-vectorized matrix-matrix multiply  */
+	/* =======================================================+ */
+	// C++ vectors are stored in row-major order, so need to transpose second matrix for SIMD
+	// using K, M values based on homework image
+	dtype *Btemparray = (dtype*) malloc (K * M * sizeof (dtype));
+	Btemparray[0] = B[0];
+	for (int i = 0; i < K; i++) {
+		for (int j = i + 1; j < M; j++) { 
+			Btemparray[i * K + j] = B[j * M + i];
+			Btemparray[j * K + i] = B[i * K + j];
+		}
+	}
+	printf("temparray made.");
+	
+	// 3 128 bit registers used for multiplication and summation
+	__m128d X, Y, Z;
+	__m128d c_sum = _mm_setzero_pd();
+	for (int i = 0; i < M; i++) {
+        for (int j = 0; j < N; j++) {
+			for(int k = 0; k < K; k += 2) { 
+				// load 2 numbers in each register
+				X = _mm_load_pd(&A[i * K + k]);
+				Y = _mm_load_pd(&B[j * K + k]);
+				// multiply the numbers and add together
+				X = _mm_mul_pd(X, Y);
+				Z = _mm_add_pd(X, Z);
+				printf("iterate.");
+			}
+		printf("sum");
+		// sum all values in Z
+		c_sum = _mm_hadd_pd(Z, Z);
+		// store in C array
+		printf("store");
+		_mm_store_pd(&C[i * N + j], c_sum);
+		}
+	}
+	
+	free(Btemparray);
 }
 
 int main(int argc, char** argv)
