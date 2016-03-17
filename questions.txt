@@ -3,8 +3,10 @@
 2. L1 size: 32KB line size: 512B
 L2 size: 2MB line size: 4KB
 
-TODO FLOPS
 3. 16.87 seconds is the shortest time the naive calculation ran in.
+There are 8 ops per "multiplication" and with ./mm 1024 1024 1024 those 8 ops happen
+1073741824 times. So total flops = 8*1073741824 = 8589934592. Dividing by 16.87 seconds
+gives 509184030.34 FLOPS or .509 GFLOP/s
 
 4.
 With a block size of two elements:
@@ -52,6 +54,12 @@ block = 128x128 elements:
   time for cache-blocked implementation: 3.12861 seconds
 
 Our optimal block size appears to be 64x64 elements
+We are doing more FLOPs now to calculate addresses for our cache blocks
+so out FLOPs increases to 32 still using ./mm 1024 1024 1024 means we will
+have 32*1073741824 = 34359738368 as our total FLOPs.
+34359738368 / 3.12861 = 1.098 x10^10 or 10.9 GFLOP/s providing a very significant
+increase over our naive code.
+
 
 Our dtype in this case is a double which is 8 bytes
 This means each block takes up 64*64*8 bytes of cache. This comes out to 32KB per block.
